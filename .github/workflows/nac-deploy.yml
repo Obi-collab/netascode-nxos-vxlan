@@ -1,0 +1,76 @@
+name: NetasCode CI/CD Optimized
+
+on:
+  push:
+    paths:
+      - 'csv/*.csv'
+  workflow_dispatch:
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      csv_changed: ${{ steps.detect.outputs.csv_changed }}
+      changed_csvs: ${{ steps.detect.outputs.changed_csvs }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Detect Changed CSVs
+        id: detect
+        run: |
+          csv_changed_files=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep '^csv/.*\.csv' || true)
+          echo "Changed CSVs:"
+          echo "$csv_changed_files"
+          echo "csv_changed=true" >> $GITHUB_OUTPUT
+          echo "changed_csvs=$(echo $csv_changed_files | tr '\n' ',' | sed 's/,$//')" >> $GITHUB_OUTPUT
+
+  deploy:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.csv_changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Python and Ansible
+        run: |
+          sudo apt update
+          sudo apt install -y python3-pip
+          pip3 install ansible
+          ansible-galaxy collection install community.general
+
+      - name: Run Ansible Playbooks for Changed CSVs
+        run: |
+          IFS=',' read -ra FILES <<< "${{ needs.detect-changes.outputs.changed_csvs }}"
+          for f in "${FILES[@]}"; do
+            base=$(basename "$f" .csv)
+            echo "Processing changes in: $f"
+            if [[ -f playbooks/Create/add_${base}.yml ]]; then
+              ansible-playbook playbooks/Create/add_${base}.yml
+            fi
+            if [[ -f playbooks/Update/update_${base}.yml ]]; then
+              ansible-playbook playbooks/Update/update_${base}.yml
+            fi
+            if [[ -f playbooks/Remove/remove_${base}.yml ]]; then
+              ansible-playbook playbooks/Remove/remove_${base}.yml
+            fi
+          done
+
+      - name: Run Cleanup
+        run: ansible-playbook playbooks/cleanup_removed_entries.yml
+
+  csv-diff:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.csv_changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Generate CSV Diff Report
+        run: |
+          mkdir -p csv-diff
+          git diff ${{ github.event.before }} ${{ github.sha }} -- csv/ > csv-diff/summary.diff
+          echo "CSV diff summary:"
+          cat csv-diff/summary.diff
