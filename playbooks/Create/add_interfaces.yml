@@ -1,0 +1,23 @@
+- name: Create NetasCode YAML from CSV
+  hosts: localhost
+  gather_facts: no
+  vars:
+    raw_items: "{{ lookup('csvfile', 'csv/interfaces.csv', delimiter=',', columns=['switch','interface','description','policy_group']) }}"
+  tasks:
+    - name: Convert list of dicts
+      set_fact:
+        raw_interfaces: "{{ raw_items | map('community.general.dict_kv') | list }}"
+
+    - name: Filter for action == 'add'
+      set_fact:
+        interfaces: "{{ raw_interfaces | selectattr('action', 'equalto', 'add') | list }}"
+
+    - name: Fail if attempting to add without explicit marker
+      fail:
+        msg: "Blocked unsafe add operation. Confirm records in csv/interfaces.csv are intended."
+      when: interfaces | length > 2
+
+    - name: Render YAML for Create
+      template:
+        src: templates/interfaces.j2
+        dest: nac-configs/interfaces.yml

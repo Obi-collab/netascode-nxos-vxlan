@@ -1,0 +1,10 @@
+vpcs:
+{% for vpc in vpcs %}
+  - id: {{ vpc.id }}
+    description: {{ vpc.description }}
+    members:
+      - switch: {{ vpc.switch1 }}
+        interface: {{ vpc.interface1 }}
+      - switch: {{ vpc.switch2 }}
+        interface: {{ vpc.interface2 }}
+{% endfor %}

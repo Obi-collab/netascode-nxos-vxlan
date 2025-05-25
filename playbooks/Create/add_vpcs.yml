@@ -1,0 +1,23 @@
+- name: Create NetasCode YAML from CSV
+  hosts: localhost
+  gather_facts: no
+  vars:
+    raw_items: "{{ lookup('csvfile', 'csv/vpcs.csv', delimiter=',', columns=['id','description','switch1','interface1','switch2','interface2']) }}"
+  tasks:
+    - name: Convert list of dicts
+      set_fact:
+        raw_vpcs: "{{ raw_items | map('community.general.dict_kv') | list }}"
+
+    - name: Filter for action == 'add'
+      set_fact:
+        vpcs: "{{ raw_vpcs | selectattr('action', 'equalto', 'add') | list }}"
+
+    - name: Fail if attempting to add without explicit marker
+      fail:
+        msg: "Blocked unsafe add operation. Confirm records in csv/vpcs.csv are intended."
+      when: vpcs | length > 2
+
+    - name: Render YAML for Create
+      template:
+        src: templates/vpcs.j2
+        dest: nac-configs/vpcs.yml

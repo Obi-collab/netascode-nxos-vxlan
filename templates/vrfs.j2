@@ -1,0 +1,6 @@
+vrfs:
+{% for vrf in vrfs %}
+  - name: {{ vrf.name }}
+    tenant: {{ vrf.tenant }}
+    type: {{ vrf.type }}
+{% endfor %}

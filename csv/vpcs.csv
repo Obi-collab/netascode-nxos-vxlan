@@ -1,0 +1,3 @@
+action,id,description,switch1,interface1,switch2,interface2
+add,10,Server1,101,Ethernet1/1,102,Ethernet1/1
+remove,11,Server2,103,Ethernet1/2,104,Ethernet1/2

@@ -1,0 +1,3 @@
+action,switch,interface,description,policy_group
+add,101,Ethernet1/1,Link to Server1,ACCESS-PG
+update,102,Ethernet1/2,Updated Link,ACCESS-PG

@@ -1,0 +1,43 @@
+- name: Cleanup CSVs by finalizing actions post-deployment
+  hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: Define CSV files to clean and finalize
+      set_fact:
+        csv_files:
+          - { name: "vlans", path: "csv/vlans.csv" }
+          - { name: "vrfs", path: "csv/vrfs.csv" }
+          - { name: "vpcs", path: "csv/vpcs.csv" }
+          - { name: "interfaces", path: "csv/interfaces.csv" }
+
+    - name: Process each CSV
+      block:
+        - name: Read CSV file for {{ item.name }}
+          community.general.read_csv:
+            path: "{{ item.path }}"
+          register: csv_data
+          loop: "{{ csv_files }}"
+          loop_control:
+            label: "{{ item.name }}"
+
+        - name: Transform actions and filter
+          set_fact:
+            cleaned_data: >-
+              {{
+                csv_data.results[loop.index0].rows
+                | rejectattr('action', 'equalto', 'remove')
+                | map('combine', {'action': 'live'} if item.action in ['add', 'update'] else {})
+                | list
+              }}
+          loop: "{{ csv_files }}"
+          loop_control:
+            label: "{{ item.name }}"
+
+        - name: Write updated CSV back
+          community.general.write_csv:
+            path: "{{ item.path }}"
+            fields: "{{ csv_data.results[loop.index0].fields }}"
+            data: "{{ cleaned_data }}"
+          loop: "{{ csv_files }}"
+          loop_control:
+            label: "{{ item.name }}"

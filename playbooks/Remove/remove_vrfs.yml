@@ -1,0 +1,34 @@
+- name: Remove NetasCode YAML from CSV
+  hosts: localhost
+  gather_facts: no
+  vars:
+    raw_items: "{{ lookup('csvfile', 'csv/vrfs.csv', delimiter=',', columns=['name','tenant','type']) }}"
+  tasks:
+    - name: Convert list of dicts
+      set_fact:
+        raw_vrfs: "{{ raw_items | map('community.general.dict_kv') | list }}"
+
+    - name: Filter for action == 'remove'
+      set_fact:
+        vrfs: "{{ raw_vrfs | selectattr('action', 'equalto', 'remove') | list }}"
+
+    - name: Fail if attempting to remove without explicit marker
+      fail:
+        msg: "Blocked unsafe remove operation. Confirm records in csv/vrfs.csv are intended."
+      when: vrfs | length > 2
+
+
+    - name: Prompt for confirmation
+      pause:
+        prompt: "You are about to REMOVE {% for item in vrfs %}\n  - { item }{% endfor %}\nType 'yes' to continue:"
+        echo: yes
+      register: user_input
+
+    - name: Abort if user did not confirm
+      fail:
+        msg: "Operation cancelled by user."
+      when: user_input.user_input != 'yes'
+    - name: Render YAML for Remove
+      template:
+        src: templates/vrfs.j2
+        dest: nac-configs/vrfs.yml

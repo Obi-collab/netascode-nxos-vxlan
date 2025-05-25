@@ -1,0 +1,3 @@
+action,name,tenant,type
+add,PROD,PROD_TEN,VRF
+update,INFRA,INFRA_TEN,VRF

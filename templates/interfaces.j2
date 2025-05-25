@@ -1,0 +1,7 @@
+interfaces:
+{% for iface in interfaces %}
+  - switch: {{ iface.switch }}
+    interface: {{ iface.interface }}
+    description: {{ iface.description }}
+    policy_group: {{ iface.policy_group }}
+{% endfor %}
