@@ -2,3 +2,4 @@ action,id,name,vrf,svi_ip
 add,10,WEB,PROD,10.10.10.1/24
 update,20,DB,PROD,10.10.20.100/24
 remove,30,MGMT,INFRA,10.1.1.1/24
+add,40,SERVER,PROD,10.40.0.1/24
